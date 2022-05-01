@@ -32,8 +32,7 @@ class PositionalEncoder(torch.nn.Module):
         x = x * scales * math.pi
         x = torch.cat([x.sin(),x.cos()],dim=-1)
         x = x.flatten(1)
-        enc = self.zero_pad(x)
-        return enc
+        return self.zero_pad(x)
 
 def group_instances(gt_coors, pt_raw_feat, ins_pred):
     coordinates = []
@@ -83,12 +82,12 @@ def fix_batches(ins_ids, features, coordinates, coordinates_T):
     new_coors = []
     new_coors_T = []
     for i in range(len(ins_ids)):
-        c = 0
         if len(ins_ids[i]) == 0:
             new_feats.append([])
             new_coors.append([])
             new_coors_T.append([])
         else:
+            c = 0
             new_feats.append(features[c])
             new_coors.append(coordinates[c])
             new_coors_T.append(coordinates_T[c])

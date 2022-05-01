@@ -32,19 +32,19 @@ class SemanticKittiModule(LightningDataModule):
 
         ########## Point dataset splits
         train_pt_dataset = SemanticKitti(
-            self.cfg.DATA_CONFIG.DATASET_PATH + '/sequences/',
-            split = train_split
+            f'{self.cfg.DATA_CONFIG.DATASET_PATH}/sequences/', split=train_split
         )
+
 
         val_pt_dataset = SemanticKitti(
-            self.cfg.DATA_CONFIG.DATASET_PATH + '/sequences/',
-            split = val_split
+            f'{self.cfg.DATA_CONFIG.DATASET_PATH}/sequences/', split=val_split
         )
 
+
         test_pt_dataset = SemanticKitti(
-            self.cfg.DATA_CONFIG.DATASET_PATH + '/sequences/',
-            split = test_split
+            f'{self.cfg.DATA_CONFIG.DATASET_PATH}/sequences/', split=test_split
         )
+
 
         ########## Voxel spherical dataset splits
         self.train_set = CylindricalSemanticKitti(
@@ -114,9 +114,11 @@ class SemanticKitti(Dataset):
     def __init__(self, data_path, split='train', seq=None):
         with open("datasets/semantic-kitti.yaml", 'r') as stream:
             semkittiyaml = yaml.safe_load(stream)
-        SemKITTI_label_name = dict()
-        for i in sorted(list(semkittiyaml['learning_map'].keys()))[::-1]:
-            SemKITTI_label_name[semkittiyaml['learning_map'][i]] = semkittiyaml['labels'][i]
+        SemKITTI_label_name = {
+            semkittiyaml['learning_map'][i]: semkittiyaml['labels'][i]
+            for i in sorted(list(semkittiyaml['learning_map'].keys()))[::-1]
+        }
+
         self.learning_map = semkittiyaml['learning_map']
         self.split = split
         split = semkittiyaml['split'][self.split]
@@ -136,10 +138,11 @@ class SemanticKitti(Dataset):
                        'bicyclist', 'motorcyclist']
         self.stuff = ['road', 'sidewalk', 'parking', 'other-ground', 'building',
                       'vegetation', 'trunk', 'terrain', 'fence', 'pole', 'traffic-sign']
-        self.things_ids = []
-        for i in sorted(list(semkittiyaml['labels'].keys())):
-            if SemKITTI_label_name[semkittiyaml['learning_map'][i]] in self.things:
-                self.things_ids.append(i)
+        self.things_ids = [
+            i
+            for i in sorted(list(semkittiyaml['labels'].keys()))
+            if SemKITTI_label_name[semkittiyaml['learning_map'][i]] in self.things
+        ]
 
     def __len__(self):
         return len(self.im_idx)
@@ -260,7 +263,26 @@ def calc_xyz_middle(xyz):
         (np.max(xyz[:, 2]) + np.min(xyz[:, 2])) / 2.0
     ], dtype=np.float32)
 
-things_ids = set([10, 11, 13, 15, 16, 18, 20, 30, 31, 32, 252, 253, 254, 255, 256, 257, 258, 259])
+things_ids = {
+    10,
+    11,
+    13,
+    15,
+    16,
+    18,
+    20,
+    30,
+    31,
+    32,
+    252,
+    253,
+    254,
+    255,
+    256,
+    257,
+    258,
+    259,
+}
 
 # @nb.jit
 def nb_aggregate_pointwise_center_offset(offsets, xyz, ins_labels, center_type):
@@ -352,17 +374,16 @@ def absoluteDirPath(directory):
 
 def parse_calibration(filename):
     calib = {}
-    calib_file = open(filename)
-    for line in calib_file:
-        key, content = line.strip().split(":")
-        values = [float(v) for v in content.strip().split()]
-        pose = np.zeros((4, 4))
-        pose[0, 0:4] = values[0:4]
-        pose[1, 0:4] = values[4:8]
-        pose[2, 0:4] = values[8:12]
-        pose[3, 3] = 1.0
-        calib[key] = pose
-    calib_file.close()
+    with open(filename) as calib_file:
+        for line in calib_file:
+            key, content = line.strip().split(":")
+            values = [float(v) for v in content.strip().split()]
+            pose = np.zeros((4, 4))
+            pose[0, 0:4] = values[:4]
+            pose[1, 0:4] = values[4:8]
+            pose[2, 0:4] = values[8:12]
+            pose[3, 3] = 1.0
+            calib[key] = pose
     return calib
 
 def parse_poses(filename, calibration):
@@ -373,7 +394,7 @@ def parse_poses(filename, calibration):
     for line in file:
         values = [float(v) for v in line.strip().split()]
         pose = np.zeros((4, 4))
-        pose[0, 0:4] = values[0:4]
+        pose[0, 0:4] = values[:4]
         pose[1, 0:4] = values[4:8]
         pose[2, 0:4] = values[8:12]
         pose[3, 3] = 1.0

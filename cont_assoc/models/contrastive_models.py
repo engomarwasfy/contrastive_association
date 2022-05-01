@@ -33,17 +33,15 @@ class ContrastiveTracking(LightningModule):
                                              self.pos_enc, use_poses)
 
     def getLoss(self, x, features):
-        loss = {}
         sem_labels = [torch.from_numpy(i).type(torch.LongTensor).cuda()
                       for i in x['sem_label']]
-        sem_labels = (torch.cat([i for i in sem_labels])).unsqueeze(1) #single tensor
+        sem_labels = torch.cat(list(sem_labels)).unsqueeze(1)
         pos_labels = [torch.from_numpy(i).type(torch.LongTensor).cuda()
                       for i in x['pos_label']]
-        pos_labels = (torch.cat([i for i in pos_labels])).unsqueeze(1) #single tensor
+        pos_labels = torch.cat(list(pos_labels)).unsqueeze(1)
         norm_features = F.normalize(features)
         contrastive_loss = self.cont_loss(norm_features, pos_labels, sem_labels)
-        loss['cont'] = contrastive_loss
-        return loss
+        return {'cont': contrastive_loss}
 
     def sparse_tensor(self, pt_coors,pt_features):
         for i in range(len(pt_features)):
@@ -54,14 +52,12 @@ class ContrastiveTracking(LightningModule):
         all_feat = [item for sublist in pt_features for item in sublist]
         all_coors = [item for sublist in pt_coors for item in sublist]
         c_, f_ = ME.utils.sparse_collate(all_coors, all_feat, dtype=torch.float32)
-        sparse = ME.SparseTensor(features=f_, coordinates=c_.int(),device='cuda')
-        return sparse
+        return ME.SparseTensor(features=f_, coordinates=c_.int(),device='cuda')
 
     def forward(self, x):
         coors = x['pt_coors']
         sparse = self.sparse_tensor(coors, x['pt_features'])
-        ins_features = self.encoder(sparse)
-        return ins_features
+        return self.encoder(sparse)
 
     def configure_optimizers(self):
         optimizer = torch.optim.Adam(filter(lambda p: p.requires_grad,

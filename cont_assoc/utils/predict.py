@@ -17,9 +17,11 @@ def cluster_ins(sem_preds, pt_ins_feat, pred_offsets, inputs, bandwidth, last_in
     pt_cart_xyz = inputs['pt_cart_xyz']
     pt_pred_offsets = [pred_offsets[i].detach().cpu().numpy().reshape(-1, 3) for i in range(len(pred_offsets))] #x,y,z
     pt_ins_feat = [pt_ins_feat[i].detach().cpu().numpy() for i in range(len(pt_ins_feat))]
-    pt_pred_valid = []
-    for i in range(len(grid_ind)):
-        pt_pred_valid.append(np.isin(sem_preds[i], valid_xentropy_ids).reshape(-1))
+    pt_pred_valid = [
+        np.isin(sem_preds[i], valid_xentropy_ids).reshape(-1)
+        for i in range(len(grid_ind))
+    ]
+
     pred_ins_ids_list = []
     for i in range(len(pt_cart_xyz)):
         i_clustered_ins_ids  = meanshift_cluster(pt_cart_xyz[i] + pt_pred_offsets[i], pt_pred_valid[i], bandwidth)
@@ -46,11 +48,10 @@ def meanshift_cluster(shifted_pcd, valid, bandwidth=1.0):
         print("Disable bin_seeding.")
     labels = ms.labels_ + 1
     assert np.min(labels) > 0
-    if valid is not None:
-        clustered_ins_ids[valid] = labels
-        return clustered_ins_ids
-    else:
+    if valid is None:
         return labels
+    clustered_ins_ids[valid] = labels
+    return clustered_ins_ids
 
 def sem_voxel2point(sem_logits, inputs):
     vox_pred = torch.argmax(sem_logits.features, dim=1)
@@ -58,16 +59,20 @@ def sem_voxel2point(sem_logits, inputs):
     vox2point_idx = inputs['vox2point_idx'] #indices mapping voxel to point
     n_valid = [inputs['vox_labels'][i].shape[1] for i in range(len(inputs['vox_labels']))] #n of valid voxels
     vox_range = np.insert(np.add.accumulate(n_valid),0,0) #indices to acces per-batch valid voxels
-    point_pred = [vox_pred[vox_range[i]:vox_range[i+1]][vox2point_idx[i]] for i in range(len(vox2point_idx))]
-    return point_pred
+    return [
+        vox_pred[vox_range[i] : vox_range[i + 1]][vox2point_idx[i]]
+        for i in range(len(vox2point_idx))
+    ]
 
 def feat_voxel2point(features, inputs):
     vox_feat = features.features.cpu()
     vox2point_idx = inputs['vox2point_idx'] #indices mapping voxel to point
     n_valid = [inputs['vox_labels'][i].shape[1] for i in range(len(inputs['vox_labels']))] #n of valid voxels
     vox_range = np.insert(np.add.accumulate(n_valid),0,0) #indices to acces per-batch valid voxels
-    point_feat = [vox_feat[vox_range[i]:vox_range[i+1]][vox2point_idx[i]] for i in range(len(vox2point_idx))]
-    return point_feat
+    return [
+        vox_feat[vox_range[i] : vox_range[i + 1]][vox2point_idx[i]]
+        for i in range(len(vox2point_idx))
+    ]
 
 def majority_voting(sem_preds, pred_ins_ids):
     merged_sem_preds = []

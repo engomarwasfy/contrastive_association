@@ -95,10 +95,9 @@ class AssociationLoss(nn.Module):
             bce_loss: scalar loss
             tracked_instances: updated dictionary with instances being tracked
         """
+        i_feat = 0
         predictions = []
         labels = []
-        _bce_loss = []
-        i_feat = 0
         for i in range(len(ins_ids)): #for each scan on the batch
             new_instances = {}
             for j in range(len(ins_ids[i])):
@@ -141,8 +140,10 @@ class AssociationLoss(nn.Module):
             for _id in dont_track_ids:
                 del tracked_instances[_id]
 
-        for i in range(len(predictions)):
-            _bce_loss.append(self.bce(predictions[i],labels[i]))
+        _bce_loss = [
+            self.bce(predictions[i], labels[i]) for i in range(len(predictions))
+        ]
+
         bce_loss = sum(_bce_loss)/len(predictions)
 
         for _id, instance in tracked_instances.items():

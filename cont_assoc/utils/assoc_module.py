@@ -112,10 +112,12 @@ class AssociationModule():
                 cost_matrix[i,j] = dist_w * cost_dist + feat_w * cost_feature
 
         idx1, idx2 = lsa(cost_matrix)
-        assoc_pairs = []
-        for i1, i2 in zip(idx1, idx2):
-            if cost_matrix[i1][i2] < 1e8:
-                assoc_pairs.append((prev_ids[i1], curr_ids[i2]))
+        assoc_pairs = [
+            (prev_ids[i1], curr_ids[i2])
+            for i1, i2 in zip(idx1, idx2)
+            if cost_matrix[i1][i2] < 1e8
+        ]
+
         return cost_matrix, assoc_pairs
 
     def perform_associations(self, curr_ins, assoc_pairs, ins_pred):
@@ -142,7 +144,7 @@ class AssociationModule():
             if idx[0].shape[0] < 30:
                 continue
             #check if the id isn't already used
-            if not _id in self.tr_ins:
+            if _id not in self.tr_ins:
                 self.tr_ins[_id] = instance
             else:
                 _id = self.last_ins_id + id_cont
@@ -172,12 +174,10 @@ class AssociationModule():
         pos_encoding = pos_encoder(pt_coors)
         pt_features = pt_features + pos_encoding
         c_, f_ = ME.utils.sparse_collate([pt_coors], [pt_features], dtype=torch.float32)
-        sparse = ME.SparseTensor(features=f_.float(), coordinates=c_.int(),device='cuda')
-        return sparse
+        return ME.SparseTensor(features=f_.float(), coordinates=c_.int(),device='cuda')
 
     def apply_pose(self, points, pose):
         hpts = torch.hstack((points[:, :3], torch.ones_like(points[:, :1]))).type(torch.float64)
         t_pose = torch.tensor(pose,dtype=torch.float64,device='cuda').T
         tr_pts = torch.mm(hpts,t_pose)
-        shifted_pts = tr_pts[:,:3]
-        return shifted_pts
+        return tr_pts[:,:3]

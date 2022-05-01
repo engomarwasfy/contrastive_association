@@ -76,19 +76,16 @@ class PanopticKitti4DEvaluator:
         # print("stuff_iou:", stuff_iou)
 
 
-        metrics_dict = {}
-        metrics_dict["PQ4D"] = float(PQ4D)
-        metrics_dict["AQ_mean"] = float(AQ_mean)
-        metrics_dict["iou_mean"] = float(iou_mean)
-        metrics_dict["things_iou"] = things_iou
-        metrics_dict["stuff_iou"] = stuff_iou
+        metrics_dict = {
+            "PQ4D": float(PQ4D),
+            "AQ_mean": float(AQ_mean),
+            "iou_mean": float(iou_mean),
+            "things_iou": things_iou,
+            "stuff_iou": stuff_iou,
+        }
 
         #Save mean metrics
         self.mean_metrics = metrics_dict
-
-        #Save to a file
-        # with open(output_filename, 'w') as outfile:
-            # yaml.dump(codalab_output, outfile, default_flow_style=False)
 
         class_all_IoU = iou.flatten().tolist()
         class_all_AQ = AQ.flatten().tolist()
@@ -96,10 +93,7 @@ class PanopticKitti4DEvaluator:
         classes_dict = {}
         for idx, (aq, iou) in enumerate(zip(class_all_AQ, class_all_IoU)):
             class_str = self.class_strings[self.class_inv_remap[idx]]
-            classes_dict[class_str] = {}
-            classes_dict[class_str]["AQ"] = aq
-            classes_dict[class_str]["IoU"] = iou
-
+            classes_dict[class_str] = {"AQ": aq, "IoU": iou}
         #Save per class metrics
         self.class_metrics = classes_dict
 

@@ -79,9 +79,10 @@ class VoxelFeatureExtractor(nn.Module):
         vox_ind = [torch.from_numpy(i).cuda() for i in voxel_index]
 
         #concatenate everything
-        cat_pt_ind = []
-        for i_batch in range(len(vox_ind)):
-            cat_pt_ind.append(F.pad(vox_ind[i_batch], (1, 0), 'constant', value=i_batch))
+        cat_pt_ind = [
+            F.pad(vox_ind[i_batch], (1, 0), 'constant', value=i_batch)
+            for i_batch in range(len(vox_ind))
+        ]
 
         cat_pt_fea = torch.cat(pt_fea, dim=0)
         cat_pt_ind = torch.cat(cat_pt_ind, dim=0)
@@ -129,19 +130,19 @@ class VoxelFeatureExtractor(nn.Module):
 class ResBlock(nn.Module):
     def __init__(self, in_filters, out_filters, kernel_size=(3, 3, 3), stride=1, indice_key=None):
         super().__init__()
-        self.conv_A1 = conv3x1(in_filters, out_filters, indice_key=indice_key+"bef")
+        self.conv_A1 = conv3x1(in_filters, out_filters, indice_key=f"{indice_key}bef")
         self.act_A1 = nn.LeakyReLU()
         self.bn_A1 = nn.BatchNorm1d(out_filters)
 
-        self.conv_A2 = conv1x3(out_filters, out_filters, indice_key=indice_key+"bef")
+        self.conv_A2 = conv1x3(out_filters, out_filters, indice_key=f"{indice_key}bef")
         self.act_A2 = nn.LeakyReLU()
         self.bn_A2 = nn.BatchNorm1d(out_filters)
 
-        self.conv_B1 = conv1x3(in_filters, out_filters, indice_key=indice_key+"bef")
+        self.conv_B1 = conv1x3(in_filters, out_filters, indice_key=f"{indice_key}bef")
         self.act_B1 = nn.LeakyReLU()
         self.bn_B1 = nn.BatchNorm1d(out_filters)
 
-        self.conv_B2 = conv3x1(out_filters, out_filters, indice_key=indice_key+"bef")
+        self.conv_B2 = conv3x1(out_filters, out_filters, indice_key=f"{indice_key}bef")
         self.act_B2 = nn.LeakyReLU()
         self.bn_B2 = nn.BatchNorm1d(out_filters)
 
@@ -172,27 +173,24 @@ class DownResBlock(nn.Module):
         super().__init__()
         self.is_dropout = is_dropout
 
-        self.conv_A1 = conv3x1(in_filters, out_filters, indice_key=indice_key+"bef")
+        self.conv_A1 = conv3x1(in_filters, out_filters, indice_key=f"{indice_key}bef")
         self.act_A1 = nn.LeakyReLU()
         self.bn_A1 = nn.BatchNorm1d(out_filters)
 
-        self.conv_A2 = conv1x3(out_filters, out_filters, indice_key=indice_key+"bef")
+        self.conv_A2 = conv1x3(out_filters, out_filters, indice_key=f"{indice_key}bef")
         self.act_A2 = nn.LeakyReLU()
         self.bn_A2 = nn.BatchNorm1d(out_filters)
 
-        self.conv_B1 = conv1x3(in_filters, out_filters, indice_key=indice_key+"bef")
+        self.conv_B1 = conv1x3(in_filters, out_filters, indice_key=f"{indice_key}bef")
         self.act_B1 = nn.LeakyReLU()
         self.bn_B1 = nn.BatchNorm1d(out_filters)
 
-        self.conv_B2 = conv3x1(out_filters, out_filters, indice_key=indice_key+"bef")
+        self.conv_B2 = conv3x1(out_filters, out_filters, indice_key=f"{indice_key}bef")
         self.act_B2 = nn.LeakyReLU()
         self.bn_B2 = nn.BatchNorm1d(out_filters)
 
         # self.dropout = nn.Dropout3d(p=dropout_rate)
-        if height_pooling:
-            _stride = 2 #pooling in all dimensions
-        else:
-            _stride = (2,2,1) #not pooling in z
+        _stride = 2 if height_pooling else (2, 2, 1)
         # self.pool = spconv.SparseMaxPool3d(kernel_size=2, stride=_stride)
         self.pool = spconv.SparseConv3d(out_filters, out_filters, kernel_size=3,
             stride=_stride, padding=1, indice_key=indice_key, bias=False)
@@ -230,7 +228,7 @@ class UpBlock(nn.Module):
 
         # self.is_dropout = drop_out
 
-        self.conv1 = conv3x3(in_filters, out_filters, indice_key=indice_key+"new_up")
+        self.conv1 = conv3x3(in_filters, out_filters, indice_key=f"{indice_key}new_up")
         self.act1 = nn.LeakyReLU()
         self.bn1 = nn.BatchNorm1d(out_filters)
 
@@ -291,15 +289,15 @@ class UpBlock(nn.Module):
 class DimDecBlock(nn.Module):
     def __init__(self, in_filters, out_filters, kernel_size=(3, 3, 3), stride=1, indice_key=None):
         super().__init__()
-        self.conv1 = conv3x1x1(in_filters, out_filters, indice_key=indice_key+"bef")
+        self.conv1 = conv3x1x1(in_filters, out_filters, indice_key=f"{indice_key}bef")
         self.bn1 = nn.BatchNorm1d(out_filters)
         self.act1 = nn.Sigmoid()
 
-        self.conv2 = conv1x3x1(in_filters, out_filters, indice_key=indice_key+"bef")
+        self.conv2 = conv1x3x1(in_filters, out_filters, indice_key=f"{indice_key}bef")
         self.bn2 = nn.BatchNorm1d(out_filters)
         self.act2 = nn.Sigmoid()
 
-        self.conv3 = conv1x1x3(in_filters, out_filters, indice_key=indice_key+"bef")
+        self.conv3 = conv1x1x3(in_filters, out_filters, indice_key=f"{indice_key}bef")
         self.bn3 = nn.BatchNorm1d(out_filters)
         self.act3 = nn.Sigmoid()
 
@@ -374,7 +372,7 @@ def split_sparse(sparse, n_ins):
     coords, feats = sparse.decomposed_coordinates_and_features
     for i in range(len(n_ins)):
         batched = []
-        for j in range(n_ins[i]):
+        for _ in range(n_ins[i]):
             single_sparse = ME.SparseTensor(features=feats[cont], coordinates=coords[cont])
             batched.append(single_sparse)
             cont += 1

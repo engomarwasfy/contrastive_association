@@ -52,7 +52,7 @@ class PS4D(LightningModule):
         features = [x for x in features if len(x)!=0]
         coordinates = [x for x in coordinates if len(x)!=0]
 
-        if len(features)==0:#don't run tracking head if no ins
+        if not features:#don't run tracking head if no ins
             # return [], [], [], ins_pred
             return [], [], [], ins_pred, {}
 

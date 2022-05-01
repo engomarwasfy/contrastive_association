@@ -54,7 +54,7 @@ def IoU(bbox0, bbox1):
     :return: IoU
     """
 
-    dim = int(len(bbox0)/2)
+    dim = len(bbox0) // 2
     overlap = [max(0, min(bbox0[i+dim], bbox1[i+dim]) - max(bbox0[i], bbox1[i])) for i in range(dim)]
     intersection = 1
     for i in range(dim):
@@ -114,7 +114,5 @@ def get_median_center_from_points(points):
     return [x,y,z]
 
 def euclidean_dist(b1, b2):
-    ret_sum = 0
-    for i in range(3):
-        ret_sum += (b1[i] - b2[i])**2
+    ret_sum = sum((b1[i] - b2[i])**2 for i in range(3))
     return  np.sqrt(ret_sum)

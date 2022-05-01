@@ -41,8 +41,10 @@ def main(config, seq, weights):
         pretrain = torch.load(weights, map_location='cpu')
         model.load_state_dict(pretrain['state_dict'],strict=True)
 
-    tb_logger = pl_loggers.TensorBoardLogger('experiments/'+cfg.EXPERIMENT.ID,
-                                             default_hp_metric=False)
+    tb_logger = pl_loggers.TensorBoardLogger(
+        f'experiments/{cfg.EXPERIMENT.ID}', default_hp_metric=False
+    )
+
 
     #Callbacks
     lr_monitor = LearningRateMonitor(logging_interval='step')
