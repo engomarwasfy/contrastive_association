@@ -4,7 +4,7 @@ click==7.1.2
 easydict==1.9                                                                   
 filterpy==1.4.5                                                                 
 numba==0.49.1                                                                   
-numpy==1.19.5                                                                   
+numpy==1.22.0                                                                   
 pytorch_lightning==1.5.9                                                        
 scikit_learn==1.0.2 
 scipy==1.5.0                                                                    
