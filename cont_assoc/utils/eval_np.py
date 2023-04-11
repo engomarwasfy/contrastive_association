@@ -16,7 +16,7 @@ class PanopticEval:
 
   def __init__(self, n_classes, device=None, ignore=None, offset=2**32, min_points=30):
     self.n_classes = n_classes
-    assert (device == None)
+    assert device is None
     self.ignore = np.array(ignore, dtype=np.int64)
     self.include = np.array([n for n in range(self.n_classes) if n not in self.ignore], dtype=np.int64)
 
@@ -93,9 +93,7 @@ class PanopticEval:
     total_tp = tp.sum()
     total = tp[self.include].sum() + fp[self.include].sum()
     total = np.maximum(total, self.eps)
-    acc_mean = total_tp.astype(np.double) / total.astype(np.double)
-
-    return acc_mean  # returns "acc mean"
+    return total_tp.astype(np.double) / total.astype(np.double)
 
   ################################# IoU STUFF ##################################
   ##############################################################################
@@ -288,9 +286,7 @@ class Panoptic4DEval:
     total_tp = tp.sum()
     total = tp[self.include].sum() + fp[self.include].sum()
     total = np.maximum(total, self.eps)
-    acc_mean = total_tp.astype(np.double) / total.astype(np.double)
-
-    return acc_mean  # returns "acc mean"
+    return total_tp.astype(np.double) / total.astype(np.double)
 
   ################################# IoU STUFF ##################################
   ##############################################################################
@@ -311,9 +307,9 @@ class Panoptic4DEval:
     if seq not in self.sequences:
       self.sequences.append(seq)
       self.preds[seq] = {}
-      self.gts[seq] = [{} for i in range(self.n_classes)]
-      self.intersects[seq] = [{} for i in range(self.n_classes)]
-      self.intersects_ovr[seq] = [{} for i in range(self.n_classes)]
+      self.gts[seq] = [{} for _ in range(self.n_classes)]
+      self.intersects[seq] = [{} for _ in range(self.n_classes)]
+      self.intersects_ovr[seq] = [{} for _ in range(self.n_classes)]
 
     # make sure instances are not zeros (it messes with my approach)
     x_inst_row = x_inst_row + 1
@@ -373,16 +369,16 @@ class Panoptic4DEval:
 
   def getPQ4D(self):
     num_tubes = [0] * self.n_classes
+    outer_sum = 0.0
+    inner_sum = 0.0
     for seq in self.sequences:
       for cl in self.include:
         cl_preds = self.preds[seq]
         cl_gts = self.gts[seq][cl]
         cl_intersects = self.intersects[seq][cl]
-        outer_sum = 0.0
         outer_sum_iou = 0.0
         num_tubes[cl] += len(cl_gts)
         for gt_id, gt_size in cl_gts.items():
-          inner_sum = 0.0
           inner_sum_iou = 0.0
           for pr_id, pr_size in cl_preds.items():
             # TODO: pay attention for zero intersection!
@@ -423,62 +419,54 @@ class Panoptic4DEval:
 
 
 def gen_psuedo_labels(n=50):
-    # generate ground truth and prediction
-    sem_pred = []
-    inst_pred = []
-    sem_gt = []
-    inst_gt = []
+  # some ignore stuff
+  N_ignore = n
+  sem_pred = [0 for _ in range(N_ignore)]
+  inst_pred = [0 for _ in range(N_ignore)]
+  sem_gt = [0 for _ in range(N_ignore)]
+  inst_gt = [0 for _ in range(N_ignore)]
+  # grass segment
+  N_grass = n+1
+  N_grass_pred = np.random.randint(0, N_grass)  # rest is sky
+  sem_pred.extend([1 for _ in range(N_grass_pred)])
+  sem_pred.extend([2 for _ in range(N_grass - N_grass_pred)])
+  inst_pred.extend([0 for _ in range(N_grass)])
+  sem_gt.extend([1 for _ in range(N_grass)])
+  inst_gt.extend([0 for _ in range(N_grass)])
 
-    # some ignore stuff
-    N_ignore = n
-    sem_pred.extend([0 for i in range(N_ignore)])
-    inst_pred.extend([0 for i in range(N_ignore)])
-    sem_gt.extend([0 for i in range(N_ignore)])
-    inst_gt.extend([0 for i in range(N_ignore)])
+  # sky segment
+  N_sky = n+2
+  N_sky_pred = np.random.randint(0, N_sky)  # rest is grass
+  sem_pred.extend([2 for _ in range(N_sky_pred)])
+  sem_pred.extend([1 for _ in range(N_sky - N_sky_pred)])
+  inst_pred.extend([0 for _ in range(N_sky)])
+  sem_gt.extend([2 for _ in range(N_sky)])
+  inst_gt.extend([0 for _ in range(N_sky)])
 
-    # grass segment
-    N_grass = n+1
-    N_grass_pred = np.random.randint(0, N_grass)  # rest is sky
-    sem_pred.extend([1 for i in range(N_grass_pred)])  # grass
-    sem_pred.extend([2 for i in range(N_grass - N_grass_pred)])  # sky
-    inst_pred.extend([0 for i in range(N_grass)])
-    sem_gt.extend([1 for i in range(N_grass)])  # grass
-    inst_gt.extend([0 for i in range(N_grass)])
+  # wrong dog as person prediction
+  N_dog = n+3
+  N_person = N_dog
+  sem_pred.extend([3 for _ in range(N_person)])
+  inst_pred.extend([35 for _ in range(N_person)])
+  sem_gt.extend([4 for _ in range(N_person)])
+  inst_gt.extend([22 for _ in range(N_person)])
+  # two persons in prediction, but three in gt
+  N_person = n+4
+  sem_pred.extend([3 for _ in range(6 * N_person)])
+  inst_pred.extend([8 for _ in range(4 * N_person)])
+  inst_pred.extend([95 for _ in range(2 * N_person)])
+  sem_gt.extend([3 for _ in range(6 * N_person)])
+  inst_gt.extend([33 for _ in range(3 * N_person)])
+  inst_gt.extend([42 for _ in range(N_person)])
+  inst_gt.extend([11 for _ in range(2 * N_person)])
 
-    # sky segment
-    N_sky = n+2
-    N_sky_pred = np.random.randint(0, N_sky)  # rest is grass
-    sem_pred.extend([2 for i in range(N_sky_pred)])  # sky
-    sem_pred.extend([1 for i in range(N_sky - N_sky_pred)])  # grass
-    inst_pred.extend([0 for i in range(N_sky)])  # first instance
-    sem_gt.extend([2 for i in range(N_sky)])  # sky
-    inst_gt.extend([0 for i in range(N_sky)])  # first instance
+  # gt and pred to numpy
+  sem_pred = np.array(sem_pred, dtype=np.int64).reshape(1, -1)
+  inst_pred = np.array(inst_pred, dtype=np.int64).reshape(1, -1)
+  sem_gt = np.array(sem_gt, dtype=np.int64).reshape(1, -1)
+  inst_gt = np.array(inst_gt, dtype=np.int64).reshape(1, -1)
 
-    # wrong dog as person prediction
-    N_dog = n+3
-    N_person = N_dog
-    sem_pred.extend([3 for i in range(N_person)])
-    inst_pred.extend([35 for i in range(N_person)])
-    sem_gt.extend([4 for i in range(N_dog)])
-    inst_gt.extend([22 for i in range(N_dog)])
-
-    # two persons in prediction, but three in gt
-    N_person = n+4
-    sem_pred.extend([3 for i in range(6 * N_person)])
-    inst_pred.extend([8 for i in range(4 * N_person)])
-    inst_pred.extend([95 for i in range(2 * N_person)])
-    sem_gt.extend([3 for i in range(6 * N_person)])
-    inst_gt.extend([33 for i in range(3 * N_person)])
-    inst_gt.extend([42 for i in range(N_person)])
-    inst_gt.extend([11 for i in range(2 * N_person)])
-
-    # gt and pred to numpy
-    sem_pred = np.array(sem_pred, dtype=np.int64).reshape(1, -1)
-    inst_pred = np.array(inst_pred, dtype=np.int64).reshape(1, -1)
-    sem_gt = np.array(sem_gt, dtype=np.int64).reshape(1, -1)
-    inst_gt = np.array(inst_gt, dtype=np.int64).reshape(1, -1)
-
-    return sem_pred, inst_pred, sem_gt, inst_gt
+  return sem_pred, inst_pred, sem_gt, inst_gt
 
 def test_4D():
     classes = 3  # ignore, car, truck

@@ -3,9 +3,7 @@ import os
 import torch
 
 def create_dirs(file_dir, test_set):
-    split = 'val'
-    if test_set:
-        split = 'test'
+    split = 'test' if test_set else 'val'
     results_dir = join(file_dir, 'output', split, 'panoptic', 'sequences')
     if not os.path.exists(results_dir):
         os.makedirs(results_dir, exist_ok=True)

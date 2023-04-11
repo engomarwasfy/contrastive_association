@@ -20,21 +20,22 @@ class InstanceFeaturesModule(LightningDataModule):
 
         if 'ONLY_SEQ' in self.cfg.TRAIN.keys():
             only_seq = self.cfg.TRAIN.ONLY_SEQ
-            val_dataset_path = self.cfg.DATA_CONFIG.DATASET_PRED_PATH + '/sequences/'
+            val_dataset_path = f'{self.cfg.DATA_CONFIG.DATASET_PRED_PATH}/sequences/'
         else:
             only_seq = None
-            val_dataset_path = self.cfg.DATA_CONFIG.VAL_PRED_PATH + '/sequences/'
+            val_dataset_path = f'{self.cfg.DATA_CONFIG.VAL_PRED_PATH}/sequences/'
 
         pos_scans = self.cfg.TRAIN.POS_SCANS
 
         train_dataset = InstanceFeatures(
-            self.cfg.DATA_CONFIG.DATASET_PATH + '/sequences/',
-            split = 'train',
-            pos_scans = pos_scans,
-            seq = only_seq,
-            augmentations = self.cfg.DATA_CONFIG.DATALOADER.AUGMENTATION,
-            r_pos_scans = self.cfg.TRAIN.RANDOM_POS_SCANS
+            f'{self.cfg.DATA_CONFIG.DATASET_PATH}/sequences/',
+            split='train',
+            pos_scans=pos_scans,
+            seq=only_seq,
+            augmentations=self.cfg.DATA_CONFIG.DATALOADER.AUGMENTATION,
+            r_pos_scans=self.cfg.TRAIN.RANDOM_POS_SCANS,
         )
+
 
         val_dataset = InstanceFeatures(
             val_dataset_path,
@@ -110,9 +111,11 @@ class InstanceFeatures(Dataset):
         self.random_pos_scans = r_pos_scans
         with open("datasets/semantic-kitti.yaml", 'r') as stream:
             semkittiyaml = yaml.safe_load(stream)
-        SemKITTI_label_name = dict()
-        for i in sorted(list(semkittiyaml['learning_map'].keys()))[::-1]:
-            SemKITTI_label_name[semkittiyaml['learning_map'][i]] = semkittiyaml['labels'][i]
+        SemKITTI_label_name = {
+            semkittiyaml['learning_map'][i]: semkittiyaml['labels'][i]
+            for i in sorted(list(semkittiyaml['learning_map'].keys()))[::-1]
+        }
+
         self.learning_map = semkittiyaml['learning_map']
         self.split = split
         split = semkittiyaml['split'][self.split]
@@ -164,19 +167,15 @@ class InstanceFeatures(Dataset):
             n_scans = self.pos_scans + 1
             pair = True
         for i in range(1,n_scans):
-            if pair:
-                if scan-i >= 0:
-                    scans.append(scan-i)
-                    pos_idx.append(index-i)
+            if pair and scan - i >= 0:
+                scans.append(scan-i)
+                pos_idx.append(index-i)
             scans.append(scan+i)
             pos_idx.append(index+i)
         scans.sort()
         pos_idx.sort()
 
-        prev_scan = 0
-        if scans[0] > 0:
-            prev_scan = scans[0] - 1
-
+        prev_scan = scans[0] - 1 if scans[0] > 0 else 0
         seq_first_pose = []
 
         for i in range(len(scans)):
@@ -326,17 +325,16 @@ def absoluteDirPath(directory):
 
 def parse_calibration(filename):
     calib = {}
-    calib_file = open(filename)
-    for line in calib_file:
-        key, content = line.strip().split(":")
-        values = [float(v) for v in content.strip().split()]
-        pose = np.zeros((4, 4))
-        pose[0, 0:4] = values[0:4]
-        pose[1, 0:4] = values[4:8]
-        pose[2, 0:4] = values[8:12]
-        pose[3, 3] = 1.0
-        calib[key] = pose
-    calib_file.close()
+    with open(filename) as calib_file:
+        for line in calib_file:
+            key, content = line.strip().split(":")
+            values = [float(v) for v in content.strip().split()]
+            pose = np.zeros((4, 4))
+            pose[0, 0:4] = values[:4]
+            pose[1, 0:4] = values[4:8]
+            pose[2, 0:4] = values[8:12]
+            pose[3, 3] = 1.0
+            calib[key] = pose
     return calib
 
 def parse_poses(filename, calibration):
@@ -347,7 +345,7 @@ def parse_poses(filename, calibration):
     for line in file:
         values = [float(v) for v in line.strip().split()]
         pose = np.zeros((4, 4))
-        pose[0, 0:4] = values[0:4]
+        pose[0, 0:4] = values[:4]
         pose[1, 0:4] = values[4:8]
         pose[2, 0:4] = values[8:12]
         pose[3, 3] = 1.0
@@ -356,10 +354,8 @@ def parse_poses(filename, calibration):
 
 def get_empty(filename):
     empty_list = []
-    empty_file = open(filename)
-    for line in empty_file:
-        empty_list.append(int(line.strip()))
-    empty_file.close()
+    with open(filename) as empty_file:
+        empty_list.extend(int(line.strip()) for line in empty_file)
     return empty_list
 
 def load_poses(pose_files, calib_files, empty_files):

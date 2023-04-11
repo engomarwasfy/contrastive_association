@@ -146,8 +146,7 @@ class CylinderSemanticHead(nn.Module):
         self.logits = spconv.SubMConv3d(4 * init_size, nclasses, indice_key="logit", kernel_size=3, stride=1, padding=1, bias=True)
 
     def forward(self, sem_fea):
-        logits = self.logits(sem_fea)
-        return logits
+        return self.logits(sem_fea)
 
 class CylinderInstanceHead(nn.Module):
     def __init__(self, cfg):
@@ -187,11 +186,25 @@ class CylinderInstanceHead(nn.Module):
         xyz = x['pt_cart_xyz']
         out = out.dense()
         out = out.permute(0, 2, 3, 4, 1)
-        pt_ins_fea_list = []
-        for batch_i, grid_ind_i in enumerate(grid_ind):
-            pt_ins_fea_list.append(out[batch_i, grid_ind[batch_i][:,0], grid_ind[batch_i][:,1], grid_ind[batch_i][:,2]])
-        pt_pred_offsets_list = []
-        for batch_i, pt_ins_fea in enumerate(pt_ins_fea_list):
-            pt_pred_offsets_list.append(self.offset_linear(self.offset(torch.cat([pt_ins_fea,torch.from_numpy(xyz[batch_i]).cuda()],dim=1))))
+        pt_ins_fea_list = [
+            out[
+                batch_i,
+                grid_ind[batch_i][:, 0],
+                grid_ind[batch_i][:, 1],
+                grid_ind[batch_i][:, 2],
+            ]
+            for batch_i, grid_ind_i in enumerate(grid_ind)
+        ]
+
+        pt_pred_offsets_list = [
+            self.offset_linear(
+                self.offset(
+                    torch.cat(
+                        [pt_ins_fea, torch.from_numpy(xyz[batch_i]).cuda()], dim=1
+                    )
+                )
+            )
+            for batch_i, pt_ins_fea in enumerate(pt_ins_fea_list)
+        ]
 
         return pt_pred_offsets_list, pt_ins_fea_list

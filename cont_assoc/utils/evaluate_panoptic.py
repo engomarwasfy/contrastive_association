@@ -57,9 +57,6 @@ class PanopticKittiEvaluator:
         class_PQ, class_SQ, class_RQ, class_all_PQ, class_all_SQ, class_all_RQ = self.evaluator.getPQ()
         class_IoU, class_all_IoU = self.evaluator.getSemIoU()
 
-        # now make a nice dictionary
-        output_dict = {}
-
         # make python variables
         class_PQ = class_PQ.item()
         class_SQ = class_SQ.item()
@@ -70,22 +67,20 @@ class PanopticKittiEvaluator:
         class_IoU = class_IoU.item()
         class_all_IoU = class_all_IoU.flatten().tolist()
 
-        output_dict["all"] = {}
-        output_dict["all"]["PQ"] = class_PQ
-        output_dict["all"]["SQ"] = class_SQ
-        output_dict["all"]["RQ"] = class_RQ
-        output_dict["all"]["IoU"] = class_IoU
+        output_dict = {
+            "all": {
+                "PQ": class_PQ,
+                "SQ": class_SQ,
+                "RQ": class_RQ,
+                "IoU": class_IoU,
+            }
+        }
 
         classwise_tables = {}
 
         for idx, (pq, rq, sq, iou) in enumerate(zip(class_all_PQ, class_all_RQ, class_all_SQ, class_all_IoU)):
             class_str = self.class_strings[self.class_inv_remap[idx]]
-            output_dict[class_str] = {}
-            output_dict[class_str]["PQ"] = pq
-            output_dict[class_str]["SQ"] = sq
-            output_dict[class_str]["RQ"] = rq
-            output_dict[class_str]["IoU"] = iou
-
+            output_dict[class_str] = {"PQ": pq, "SQ": sq, "RQ": rq, "IoU": iou}
         #Save per class metrics
         self.class_metrics = output_dict
 
@@ -103,18 +98,19 @@ class PanopticKittiEvaluator:
         SQ_stuff = np.mean([float(output_dict[c]["SQ"]) for c in self.stuff])
         mIoU = output_dict["all"]["IoU"]
 
-        codalab_output = {}
-        codalab_output["pq_mean"] = float(PQ_all)
-        codalab_output["pq_dagger"] = float(PQ_dagger)
-        codalab_output["sq_mean"] = float(SQ_all)
-        codalab_output["rq_mean"] = float(RQ_all)
-        codalab_output["iou_mean"] = float(mIoU)
-        codalab_output["pq_stuff"] = float(PQ_stuff)
-        codalab_output["rq_stuff"] = float(RQ_stuff)
-        codalab_output["sq_stuff"] = float(SQ_stuff)
-        codalab_output["pq_things"] = float(PQ_things)
-        codalab_output["rq_things"] = float(RQ_things)
-        codalab_output["sq_things"] = float(SQ_things)
+        codalab_output = {
+            "pq_mean": float(PQ_all),
+            "pq_dagger": float(PQ_dagger),
+            "sq_mean": float(SQ_all),
+            "rq_mean": float(RQ_all),
+            "iou_mean": float(mIoU),
+            "pq_stuff": float(PQ_stuff),
+            "rq_stuff": float(RQ_stuff),
+            "sq_stuff": float(SQ_stuff),
+            "pq_things": float(PQ_things),
+            "rq_things": float(RQ_things),
+            "sq_things": float(SQ_things),
+        }
 
         #Save mean metrics
         self.mean_metrics = codalab_output
@@ -127,7 +123,10 @@ class PanopticKittiEvaluator:
 
     def print_results(self):
         evaluated_fnames = self.evaluator.evaluated_fnames
-        print('Evaluated {} frames. Duplicated frame number: {}'.format(len(evaluated_fnames), len(evaluated_fnames) - len(set(evaluated_fnames))))
+        print(
+            f'Evaluated {len(evaluated_fnames)} frames. Duplicated frame number: {len(evaluated_fnames) - len(set(evaluated_fnames))}'
+        )
+
         print('|        |   PQ   |   RQ   |   SQ   |  IoU   |')
         for k, v in self.class_metrics.items():
             print('|{}| {:.4f} | {:.4f} | {:.4f} | {:.4f} |'.format(

@@ -86,12 +86,11 @@ def random_point_dropout(points, features, max_dropout_ratio=0.875):
     """
     dropout_ratio =  np.random.random()*max_dropout_ratio # 0~0.875
     drop_idx = np.where(np.random.random((points.shape[0]))<=dropout_ratio)[0]
-    if len(drop_idx)>0 and len(drop_idx) < len(points)/2:
-        new_points = np.delete(points,drop_idx,axis=0)
-        new_features = np.delete(features,drop_idx,axis=0)
-        return new_points, new_features
-    else:
+    if len(drop_idx) <= 0 or len(drop_idx) >= len(points) / 2:
         return points, features
+    new_points = np.delete(points,drop_idx,axis=0)
+    new_features = np.delete(features,drop_idx,axis=0)
+    return new_points, new_features
 
 def sample_random_normals(N, dim=3):
     """Returnns N unit normals of dimesion dim sampled on an unit ball
@@ -110,24 +109,22 @@ def random_plane_dropout(points, features):
     """
     #apply only sometimes
     prob = np.random.random()
-    if prob < 0.6:
-        normalized = normalize_points(points)
-        normal = sample_random_normals(1)[0]
-        tr_idx = int(np.random.random(1)*normalized.shape[0])
-        trans_pt = normalized[tr_idx]
-        remove = []
-        for i in range(normalized.shape[0]):
-            res = np.dot(normalized[i]-trans_pt,normal)
-            if res > 0:
-                remove.append(i)
-        if len(remove) < normalized.shape[0]:
-            new_points = np.delete(points,remove,axis=0)
-            new_features = np.delete(features,remove,axis=0)
-            return new_points, new_features
-        else:
-            return points, features
-    else:
+    if prob >= 0.6:
         return points, features
+    normalized = normalize_points(points)
+    normal = sample_random_normals(1)[0]
+    tr_idx = int(np.random.random(1)*normalized.shape[0])
+    trans_pt = normalized[tr_idx]
+    remove = []
+    for i in range(normalized.shape[0]):
+        res = np.dot(normalized[i]-trans_pt,normal)
+        if res > 0:
+            remove.append(i)
+    if len(remove) >= normalized.shape[0]:
+        return points, features
+    new_points = np.delete(points,remove,axis=0)
+    new_features = np.delete(features,remove,axis=0)
+    return new_points, new_features
 
 def contour_dropout(points, features):
     """ Randomly drop the most outer points
@@ -140,18 +137,17 @@ def contour_dropout(points, features):
     """
     #apply only sometimes
     prob = np.random.random()
-    if prob < 0.6:
-        r = np.random.random()
-        if r < 0.4:
-            return points, features
-        #shrink instance
-        #keep only points in a certain range
-        normalized = normalize_points(points)
-        rx = (normalized[:,0]<r) * (normalized[:,0]>-r)
-        ry = (normalized[:,1]<r) * (normalized[:,1]>-r)
-        rz = (normalized[:,2]<r) * (normalized[:,2]>-r)
-        new_points = points[rx*ry*rz]
-        new_features = features[rx*ry*rz]
-        return new_points, new_features
-    else:
+    if prob >= 0.6:
         return points, features
+    r = np.random.random()
+    if r < 0.4:
+        return points, features
+    #shrink instance
+    #keep only points in a certain range
+    normalized = normalize_points(points)
+    rx = (normalized[:,0]<r) * (normalized[:,0]>-r)
+    ry = (normalized[:,1]<r) * (normalized[:,1]>-r)
+    rz = (normalized[:,2]<r) * (normalized[:,2]>-r)
+    new_points = points[rx*ry*rz]
+    new_features = features[rx*ry*rz]
+    return new_points, new_features
